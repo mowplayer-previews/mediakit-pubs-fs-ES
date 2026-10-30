@@ -26,6 +26,21 @@
   #bar button{background:#1e1429;border:1px solid #3a2f48;color:#f4eff7;border-radius:999px;width:36px;height:36px;font-size:16px;cursor:pointer}
   #count{font-size:14px;font-weight:700;color:#d6cde0;min-width:44px;text-align:center}
   #prog{position:fixed;left:0;top:0;height:4px;background:linear-gradient(90deg,#fc3262,#921ea0);transition:width .3s;z-index:6}
+  /* Mobile vertical: una página con scroll, cada slide reacomodada */
+  html.m,html.m body{height:auto;overflow:auto;overflow-x:hidden}
+  html.m #bar,html.m #prog,html.m #notes{display:none!important}
+  html.m #stage{position:static;width:680px;height:auto;transform:none}
+  html.m #stage>section{position:relative;inset:auto;width:680px!important;height:auto!important;opacity:1;visibility:visible;transition:none;display:flex!important;flex-direction:column!important;gap:30px!important;padding:64px 40px 72px!important;overflow:visible;border-bottom:2px solid #2a1d38}
+  html.m #stage>section .mx-hide{display:none!important}
+  html.m #stage>section .mx-static{position:static!important;top:auto!important;left:auto!important;right:auto!important;bottom:auto!important}
+  html.m #stage>section .mx-w{width:auto!important;max-width:100%!important}
+  html.m #stage>section .mx-h{height:auto!important}
+  html.m #stage>section .mx-img{width:100%!important;height:auto!important;max-width:100%!important}
+  html.m #stage>section .mx-wrap{flex-wrap:wrap!important}
+  html.m #stage>section .mx-col{flex-direction:column!important;align-items:stretch!important}
+  html.m #stage>section .mx-item{flex:none!important;width:auto!important;min-width:0}
+  html.m #stage>section .mx-tl{text-align:left!important;white-space:normal!important}
+  html.m #stage>section .mx-cta{align-self:flex-start;width:auto!important;font-size:30px!important}
 </style>
 </head>
 <body>
@@ -275,6 +290,48 @@
 </div>
 <script>
 (function(){
+  var M=window.matchMedia('(orientation: portrait) and (max-width: 900px)');
+  window.__mobile=M.matches;
+  if(!M.matches)return;
+  var stage=document.getElementById('stage');
+  var secs=[].slice.call(stage.children);
+  // medir en layout desktop
+  var data=[];
+  secs.forEach(function(s){s.querySelectorAll('*').forEach(function(el){
+    if(el.closest('svg')&&el.tagName.toLowerCase()!=='svg')return;
+    var r=el.getBoundingClientRect(),cs=getComputedStyle(el);
+    data.push({el:el,w:r.width,h:r.height,cs:{pos:el.style.position,disp:cs.display,dir:cs.flexDirection,iw:parseFloat(el.style.width)||0,ih:parseFloat(el.style.height)||0}});
+  })});
+  var W=new Map();data.forEach(function(d){W.set(d.el,d.w)});
+  data.forEach(function(d){
+    var el=d.el,tag=el.tagName.toLowerCase(),c=el.classList;
+    if(tag==='aside'||tag==='svg')return;
+    if(d.cs.pos==='absolute'){
+      var hasContent=(el.textContent.trim().length>0)||tag==='img'||el.querySelector('img');
+      if(!hasContent){c.add('mx-hide');return}
+      c.add('mx-static','mx-tl');
+    }
+    if(tag==='img'){ if(d.w>=220)c.add('mx-img'); return; }
+    if(d.cs.iw>300||d.w>640)c.add('mx-w');
+    if(d.cs.ih>120)c.add('mx-h');
+    if(el.style.whiteSpace==='nowrap'&&el.querySelector('a'))c.add('mx-cta');
+    if(d.cs.disp.indexOf('flex')>-1&&d.cs.dir==='row'){
+      var kids=[].slice.call(el.children).filter(function(k){return k.tagName.toLowerCase()!=='aside'});
+      var big=kids.filter(function(k){return (W.get(k)||0)>=240});
+      var col=(big.length>=3)||big.some(function(k){return W.get(k)>=400})&&big.length>=2;
+      if(col){c.add('mx-col');kids.forEach(function(k){ if((W.get(k)||0)<60&&!k.textContent.trim())k.classList.add('mx-hide'); else k.classList.add('mx-item');});}
+      else c.add('mx-wrap');
+    }
+  });
+  document.documentElement.classList.add('m');
+  function z(){stage.style.zoom=(document.documentElement.clientWidth/680)}
+  z();addEventListener('resize',z);
+  M.addEventListener&&M.addEventListener('change',function(){location.reload()});
+})();
+</script>
+<script>
+(function(){
+  if(window.__mobile){var MM=window.matchMedia('(orientation: portrait) and (max-width: 900px)');return;}
   var stage=document.getElementById('stage'),slides=[].slice.call(stage.children),i=0;
   var notes=document.getElementById('notes'),count=document.getElementById('count'),prog=document.getElementById('prog');
   function fit(){var s=Math.min(innerWidth/1920,innerHeight/1080);stage.style.transform='translate(-50%,-50%) scale('+s+')';}
@@ -300,6 +357,7 @@
   document.getElementById('next').onclick=function(){go(i+1)};
   document.getElementById('fs').onclick=fs;
   addEventListener('hashchange',function(){var n=(parseInt(location.hash.slice(1),10)||1)-1;if(n!==i)go(n)});
+  var MQ=window.matchMedia('(orientation: portrait) and (max-width: 900px)');MQ.addEventListener&&MQ.addEventListener('change',function(){location.reload()});
   fit();go((parseInt(location.hash.slice(1),10)||1)-1);
 })();
 </script>
